@@ -6,17 +6,6 @@ import _c "core:c"
 
 
 error :: u64
-eglGetPlatformDisplayEXT_t :: #type proc(
-	unamed0: EGLenum,
-	unamed1: EGLNativeDisplayType,
-	unamed2: ^EGLint,
-) -> EGLDisplay
-eglCreatePlatformWindowSurfaceEXT_t :: #type proc(
-	unamed0: EGLDisplay,
-	unamed1: EGLConfig,
-	unamed2: EGLNativeWindowType,
-	unamed3: ^EGLint,
-) -> EGLSurface
 event_callback :: #type proc(ctx: ^context_t, event: ^event, user_data: rawptr)
 render_callback :: #type proc(
 	ctx: ^context_t,
@@ -51,13 +40,6 @@ event_type :: enum i32 {
 	TOUCH_MOTION,
 }
 
-screenshot_state :: enum i32 {
-	SCREENSHOT_PENDING,
-	SCREENSHOT_READY,
-	SCREENSHOT_FAILED,
-	SCREENSHOT_DONE,
-}
-
 backend_type :: enum i32 {
 	RAW,
 	OPENGL,
@@ -71,10 +53,44 @@ render_state :: enum i32 {
 	ONCE,
 }
 
-wl_buffer :: struct {}
+ERROR_NONE :: 0
+ERROR_FAILED :: (1 << 0)
+ERROR_NOT_IMPLEMENTED :: (1 << 1)
+ERROR_DISPLAY_CONNECT :: (1 << 2)
+ERROR_NO_OUTPUTS :: (1 << 3)
+ERROR_NO_XDG_OUTPUT_MANAGER :: (1 << 4)
+ERROR_NO_LAYER_SHELL :: (1 << 5)
+ERROR_NO_SHM :: (1 << 6)
+ERROR_NO_COMPOSITOR :: (1 << 7)
+ERROR_NO_CURSOR_SHAPE_MANAGER :: (1 << 8)
+ERROR_NO_SCREENCOPY_MANAGER :: (1 << 9)
+ERROR_BACKEND_INIT :: (1 << 10)
+ERROR_NO_BACKEND_SUPPORT :: (1 << 11)
+ERROR_LAYER_SURFACE_INIT :: (1 << 12)
+ERROR_MEMORY :: (1 << 13)
+ERROR_SHARED_BUFFER_INIT :: (1 << 14)
+ERROR_OPENGL_LOAD_PROC :: (1 << 15)
+ERROR_OPENGL_DISPLAY_CONNECT :: (1 << 16)
+ERROR_OPENGL_INITIALIZE :: (1 << 17)
+ERROR_OPENGL_CONFIG :: (1 << 18)
+ERROR_OPENGL_BIND_API :: (1 << 19)
+ERROR_OPENGL_CONTEXT_INIT :: (1 << 20)
+ERROR_OPENGL_WL_EGL_WINDOW_INIT :: (1 << 21)
+ERROR_OPENGL_SURFACE_INIT :: (1 << 22)
+ERROR_SHARED_BUFFER_FD_INIT :: (1 << 23)
+ERROR_SHARED_BUFFER_TRUNCATE :: (1 << 24)
+ERROR_SHARED_BUFFER_MMAP :: (1 << 25)
+ERROR_SHARED_BUFFER_POOL_INIT :: (1 << 26)
+ERROR_SHARED_BUFFER_BUFFER_INIT :: (1 << 27)
+ERROR_FRAME_INIT :: (1 << 28)
+ERROR_CAIRO_SURFACE_INIT :: (1 << 29)
+ERROR_CAIRO_INIT :: (1 << 30)
+ERROR_SURFACE_INIT :: (error(1) << 31)
+ERROR_OUTPUT_INIT :: (error(1) << 32)
+ERROR_CURSOR_THEME :: (error(1) << 33)
 
 shared_buffer :: struct {
-	buffer: ^wl_buffer,
+	buffer: rawptr,
 	data:   rawptr,
 	fd:     _c.int,
 	width:  i32,
@@ -88,10 +104,10 @@ shared_buffer_result :: struct {
 }
 
 seat :: struct {
-	seat:               ^wl_seat,
-	pointer:            ^wl_pointer,
-	keyboard:           ^wl_keyboard,
-	touch:              ^wl_touch,
+	seat:               rawptr,
+	pointer:            rawptr,
+	keyboard:           rawptr,
+	touch:              rawptr,
 	pointer_focus:      focus,
 	keyboard_focus:     focus,
 	touch_focus:        focus,
@@ -100,12 +116,12 @@ seat :: struct {
 }
 
 context_t :: struct {
-	display:            ^wl_display,
-	shm:                ^wl_shm,
-	compositor:         ^wl_compositor,
-	layer_shell:        ^zwlr_layer_shell_v1,
-	output_manager:     ^zxdg_output_manager_v1,
-	screencopy_manager: ^zwlr_screencopy_manager_v1,
+	display:            rawptr,
+	shm:                rawptr,
+	compositor:         rawptr,
+	layer_shell:        rawptr,
+	output_manager:     rawptr,
+	screencopy_manager: rawptr,
 	cursor_engine:      ^cursor_engine,
 	seats:              ^^seat,
 	num_seats:          _c.size_t,
@@ -123,28 +139,18 @@ context_t :: struct {
 	frame_timer:        frame_timer,
 }
 
-wl_cursor :: struct {}
-
-wl_surface :: struct {}
-
-wl_cursor_image :: struct {}
-
 cursor :: struct {
 	seat:                 ^seat,
-	cursor:               ^wl_cursor,
-	surface:              ^wl_surface,
-	current_cursor_image: ^wl_cursor_image,
+	cursor:               rawptr,
+	surface:              rawptr,
+	current_cursor_image: rawptr,
 	current_image_index:  _c.uint,
 	current_time:         _c.double,
 }
 
-wp_cursor_shape_manager_v1 :: struct {}
-
-wl_cursor_theme :: struct {}
-
 cursor_engine :: struct {
-	manager:     ^wp_cursor_shape_manager_v1,
-	theme:       ^wl_cursor_theme,
+	manager:     rawptr,
+	theme:       rawptr,
 	cursors:     ^cursor,
 	num_cursors: _c.size_t,
 }
@@ -162,8 +168,8 @@ rect :: struct {
 }
 
 output :: struct {
-	output:       ^wl_output,
-	xdg_output:   ^zxdg_output_v1,
+	output:       rawptr,
+	xdg_output:   rawptr,
 	sfc:          ^^layer_surface,
 	num_sfc:      _c.size_t,
 	geo:          rect,
@@ -173,12 +179,12 @@ output :: struct {
 }
 
 layer_surface :: struct {
-	surface:          ^wl_surface,
-	layer_surface:    ^zwlr_layer_surface_v1,
+	surface:          rawptr,
+	layer_surface:    rawptr,
 	backend_data:     rawptr,
 	w:                u32,
 	h:                u32,
-	callback_data:    ^callback_data,
+	callback_data:    rawptr,
 	not_ready:        _c.int,
 	dirty:            _c.int,
 	configured:       _c.int,
@@ -191,22 +197,10 @@ focus :: struct {
 	surface: ^layer_surface,
 }
 
-wl_seat :: struct {}
-
-wl_pointer :: struct {}
-
-wl_keyboard :: struct {}
-
-wl_touch :: struct {}
-
 seat_result :: struct {
 	result: ^seat,
 	error:  u64,
 }
-
-zwlr_layer_surface_v1 :: struct {}
-
-callback_data :: struct {}
 
 layer_surface_result :: struct {
 	result: ^layer_surface,
@@ -225,17 +219,6 @@ event :: struct {
 	x:        _c.double,
 	y:        _c.double,
 	touch_id: i32,
-}
-
-wl_output :: struct {}
-
-zxdg_output_v1 :: struct {}
-
-screenshot_data :: struct {
-	ctx:       ^context_t,
-	output:    ^output,
-	buffer_rs: shared_buffer_result,
-	state:     screenshot_state,
 }
 
 output_result :: struct {
@@ -258,8 +241,8 @@ frame_timer :: struct {
 
 cairo_surface :: struct {
 	buffer:        ^shared_buffer,
-	cairo_surface: ^cairo_surface_t,
-	cairo:         ^cairo_t,
+	cairo_surface: rawptr,
+	cairo:         rawptr,
 }
 
 backend :: struct {
@@ -308,18 +291,16 @@ opengl_config :: struct {
 	render_buffer: _c.int,
 }
 
-wl_egl_window :: struct {}
-
 opengl_surface :: struct {
-	surface:    EGLSurface,
-	egl_window: ^wl_egl_window,
+	surface:    rawptr,
+	egl_window: rawptr,
 }
 
 backend_opengl :: struct {
 	base:     backend,
-	display:  EGLDisplay,
-	_context: EGLContext,
-	config:   EGLConfig,
+	display:  rawptr,
+	_context: rawptr,
+	config:   rawptr,
 	cfg:      ^opengl_config,
 }
 
@@ -349,26 +330,6 @@ context_config :: struct {
 	user_data:                        rawptr,
 }
 
-wl_display :: struct {}
-
-wl_shm :: struct {}
-
-wl_compositor :: struct {}
-
-zwlr_layer_shell_v1 :: struct {}
-
-zxdg_output_manager_v1 :: struct {}
-
-zwlr_screencopy_manager_v1 :: struct {}
-
-registry_data :: struct {
-	seats:          ^^wl_seat,
-	num_seats:      _c.size_t,
-	outputs:        ^^wl_output,
-	num_outputs:    _c.size_t,
-	cursor_manager: ^wp_cursor_shape_manager_v1,
-}
-
 context_result :: struct {
 	result: ^context_t,
 	error:  u64,
@@ -381,12 +342,6 @@ backend_result :: struct {
 
 @(default_calling_convention = "c")
 foreign samurai_render {
-
-	@(link_name = "eglGetPlatformDisplayEXT")
-	eglGetPlatformDisplayEXT: eglGetPlatformDisplayEXT_t
-
-	@(link_name = "eglCreatePlatformWindowSurfaceEXT")
-	eglCreatePlatformWindowSurfaceEXT: eglCreatePlatformWindowSurfaceEXT_t
 
 	@(link_name = "samure_strerror")
 	strerror :: proc(error_code: u64) -> cstring ---
@@ -401,7 +356,7 @@ foreign samurai_render {
 	_samure_shared_buffer_unwrap :: proc(rs: shared_buffer_result) -> ^shared_buffer ---
 
 	@(link_name = "samure_create_shared_buffer")
-	create_shared_buffer :: proc(shm: ^wl_shm, format: u32, width: i32, height: i32) -> shared_buffer_result ---
+	create_shared_buffer :: proc(shm: rawptr, format: u32, width: i32, height: i32) -> shared_buffer_result ---
 
 	@(link_name = "samure_destroy_shared_buffer")
 	destroy_shared_buffer :: proc(b: ^shared_buffer) ---
@@ -410,19 +365,19 @@ foreign samurai_render {
 	shared_buffer_copy :: proc(dst: ^shared_buffer, src: ^shared_buffer) -> u64 ---
 
 	@(link_name = "samure_init_cursor")
-	init_cursor :: proc(seat: ^seat, theme: ^wl_cursor_theme, compositor: ^wl_compositor) -> cursor ---
+	init_cursor :: proc(seat: ^seat, theme: rawptr, compositor: rawptr) -> cursor ---
 
 	@(link_name = "samure_destroy_cursor")
 	destroy_cursor :: proc(cursor: cursor) ---
 
 	@(link_name = "samure_cursor_set_shape")
-	cursor_set_shape :: proc(cursor: ^cursor, theme: ^wl_cursor_theme, name: cstring) ---
+	cursor_set_shape :: proc(cursor: ^cursor, theme: rawptr, name: cstring) ---
 
 	@(link_name = "_samure_cursor_engine_unwrap")
 	_samure_cursor_engine_unwrap :: proc(rs: cursor_engine_result) -> ^cursor_engine ---
 
 	@(link_name = "samure_create_cursor_engine")
-	create_cursor_engine :: proc(ctx: ^context_t, manager: ^wp_cursor_shape_manager_v1) -> cursor_engine_result ---
+	create_cursor_engine :: proc(ctx: ^context_t, manager: rawptr) -> cursor_engine_result ---
 
 	@(link_name = "samure_destroy_cursor_engine")
 	destroy_cursor_engine :: proc(engine: ^cursor_engine) ---
@@ -455,7 +410,7 @@ foreign samurai_render {
 	_samure_seat_unwrap :: proc(rs: seat_result) -> ^seat ---
 
 	@(link_name = "samure_create_seat")
-	create_seat :: proc(ctx: ^context_t, seat: ^wl_seat) -> seat_result ---
+	create_seat :: proc(ctx: ^context_t, seat: rawptr) -> seat_result ---
 
 	@(link_name = "samure_destroy_seat")
 	destroy_seat :: proc(seat: ^seat) ---
@@ -479,7 +434,7 @@ foreign samurai_render {
 	_samure_output_unwrap :: proc(rs: output_result) -> ^output ---
 
 	@(link_name = "samure_create_output")
-	create_output :: proc(ctx: ^context_t, output: ^wl_output) -> output_result ---
+	create_output :: proc(ctx: ^context_t, output: rawptr) -> output_result ---
 
 	@(link_name = "samure_destroy_output")
 	destroy_output :: proc(ctx: ^context_t, output: ^output) ---
