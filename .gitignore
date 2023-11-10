@@ -4,3 +4,4 @@ odinfmt.json
 build/
 
 examples/blank/blank
+examples/opengl_bounce/opengl_bounce
