@@ -1,2 +1,6 @@
 ols.json
 odinfmt.json
+.xmake/
+build/
+
+examples/blank/blank
