@@ -3,6 +3,8 @@ package samurai_render
 foreign import "system:samurai_render"
 
 import _c "core:c"
+import "core:fmt"
+import "core:strings"
 
 
 error :: u64
@@ -102,6 +104,7 @@ ERROR_CAIRO_INIT :: (1 << 30)
 ERROR_SURFACE_INIT :: (error(1) << 31)
 ERROR_OUTPUT_INIT :: (error(1) << 32)
 ERROR_CURSOR_THEME :: (error(1) << 33)
+NUM_ERRORS :: 34
 
 shared_buffer :: struct {
     buffer: rawptr,
@@ -306,16 +309,6 @@ context_config :: struct {
 
 @(default_calling_convention = "c")
 foreign samurai_render {
-
-    @(link_name = "samure_strerror", private)
-    strerror :: proc(error_code: u64) -> cstring ---
-
-    @(link_name = "samure_build_error_string", private)
-    build_error_string :: proc(error_code: u64) -> cstring ---
-
-    @(link_name = "samure_perror", private)
-    perror :: proc(msg: cstring, error_code: u64) -> _c.int ---
-
     @(link_name = "samure_create_shared_buffer")
     create_shared_buffer :: proc(shm: rawptr, format: u32, width: i32, height: i32) -> (^shared_buffer, error) ---
 
@@ -549,4 +542,109 @@ foreign samurai_render {
 
     @(link_name = "samure_create_backend")
     create_backend :: proc(on_layer_surface_configure: on_layer_surface_configure_t, render_start: render_start_t, render_end: render_end_t, destroy: destroy_t, associate_layer_surface: associate_layer_surface_t, unassociate_layer_surface: unassociate_layer_surface_t) -> (^backend, error) ---
+}
+
+strerror :: proc(error_code: error) -> string {
+    switch error_code {
+    case ERROR_NONE:
+        return "no error"
+    case ERROR_FAILED:
+        return "failed"
+    case ERROR_NOT_IMPLEMENTED:
+        return "not implemented"
+    case ERROR_DISPLAY_CONNECT:
+        return "display connection failed"
+    case ERROR_NO_OUTPUTS:
+        return "no outputs"
+    case ERROR_NO_XDG_OUTPUT_MANAGER:
+        return "no xdg output manager"
+    case ERROR_NO_LAYER_SHELL:
+        return "no layer shell"
+    case ERROR_NO_SHM:
+        return "no shm"
+    case ERROR_NO_COMPOSITOR:
+        return "no compositor"
+    case ERROR_NO_CURSOR_SHAPE_MANAGER:
+        return "no cursor shape manager"
+    case ERROR_NO_SCREENCOPY_MANAGER:
+        return "no screencopy manager"
+    case ERROR_BACKEND_INIT:
+        return "backend initialization failed"
+    case ERROR_NO_BACKEND_SUPPORT:
+        return "backend is not supported"
+    case ERROR_LAYER_SURFACE_INIT:
+        return "layer surface initialization failed"
+    case ERROR_MEMORY:
+        return "memory allocation failed"
+    case ERROR_SHARED_BUFFER_INIT:
+        return "shared buffer initialization failed"
+    case ERROR_OPENGL_LOAD_PROC:
+        return "loading of functions failed"
+    case ERROR_OPENGL_DISPLAY_CONNECT:
+        return "egl display connection failed"
+    case ERROR_OPENGL_INITIALIZE:
+        return "egl display initialization failed"
+    case ERROR_OPENGL_CONFIG:
+        return "did not find a fitting config"
+    case ERROR_OPENGL_BIND_API:
+        return "binding to opengl api failed"
+    case ERROR_OPENGL_CONTEXT_INIT:
+        return "egl context creation failed"
+    case ERROR_OPENGL_WL_EGL_WINDOW_INIT:
+        return "wayland egl window creation failed"
+    case ERROR_OPENGL_SURFACE_INIT:
+        return "egl surface creation failed"
+    case ERROR_SHARED_BUFFER_FD_INIT:
+        return "failed to open file descriptor"
+    case ERROR_SHARED_BUFFER_TRUNCATE:
+        return "failed to truncate file"
+    case ERROR_SHARED_BUFFER_MMAP:
+        return "mmap failed"
+    case ERROR_SHARED_BUFFER_POOL_INIT:
+        return "shm pool initialization failed"
+    case ERROR_SHARED_BUFFER_BUFFER_INIT:
+        return "shm buffer initialization failed"
+    case ERROR_FRAME_INIT:
+        return "screencopy initialization failed"
+    case ERROR_CAIRO_SURFACE_INIT:
+        return "cairo surface initialization failed"
+    case ERROR_CAIRO_INIT:
+        return "cairo initialization failed"
+    case ERROR_SURFACE_INIT:
+        return "surface initialization failed"
+    case ERROR_OUTPUT_INIT:
+        return "output initialization failed"
+    case ERROR_CURSOR_THEME:
+        return "failed to load cursor theme"
+    case:
+        return "unknown error"
+    }
+}
+
+build_error_string :: proc(error_code: error) -> string {
+    if error_code == ERROR_NONE {
+        return strerror(ERROR_NONE)
+    }
+
+    error_string := strings.builder_make()
+    not_first: bool
+
+    for i: error = 0; i < NUM_ERRORS - 1; i += 1 {
+        code := error_code & (1 << i)
+        if code != ERROR_NONE {
+            err_str := strerror(code)
+            if not_first {
+                strings.write_string(&error_string, "; ")
+                not_first = true
+            }
+            strings.write_string(&error_string, err_str)
+        }
+    }
+
+    return strings.to_string(error_string)
+}
+
+perror :: proc(msg: string, error_code: error) -> int {
+    error_string := build_error_string(error_code)
+    return fmt.eprintf("%s: %s\n", msg, error_string)
 }
