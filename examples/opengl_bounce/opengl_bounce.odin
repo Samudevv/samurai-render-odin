@@ -16,9 +16,10 @@ GL_LIB :: "libGL.so"
 gl_lib: dynlib.Library
 
 VERT_SRC :: `#version 330 core
+#extension GL_ARB_explicit_uniform_location : require
 layout (location = 0) in vec3 aPos;
 
-uniform mat4 proj;
+layout (location = 1) uniform mat4 proj;
 
 void main()
 {
@@ -253,12 +254,7 @@ on_render :: proc "c" (
 
     final_mat := proj * transl * scale * rotate
 
-    gl.UniformMatrix4fv(
-        gl.GetUniformLocation(shader_prog, "proj"),
-        1,
-        gl.FALSE,
-        cast([^]f32)&final_mat,
-    )
+    gl.UniformMatrix4fv(1, 1, gl.FALSE, cast([^]f32)&final_mat)
 
     gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
 }
