@@ -301,6 +301,7 @@ context_config :: struct {
     gl:                               ^opengl_config,
     not_create_output_layer_surfaces: b32,
     not_request_frame:                b32,
+    force_client_cursors:             b32,
     on_event:                         event_callback,
     on_render:                        render_callback,
     on_update:                        update_callback,
@@ -325,7 +326,7 @@ foreign samurai_render {
     destroy_cursor :: proc(cursor: cursor) ---
 
     @(link_name = "samure_cursor_set_shape")
-    cursor_set_shape :: proc(cursor: ^cursor, theme: rawptr, name: cstring) ---
+    cursor_set_shape :: proc(engine: ^cursor_engine, cursor: ^cursor, theme: rawptr, shape: u32) ---
 
     @(link_name = "samure_create_cursor_engine")
     create_cursor_engine :: proc(ctx: ^context_t, manager: rawptr) -> (^cursor_engine, error) ---
@@ -648,3 +649,4 @@ perror :: proc(msg: string, error_code: error) -> int {
     error_string := build_error_string(error_code)
     return fmt.eprintf("%s: %s\n", msg, error_string)
 }
+
