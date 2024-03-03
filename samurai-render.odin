@@ -1,6 +1,6 @@
 package samurai_render
 
-foreign import "system:samurai_render"
+foreign import samure "system:samurai-render"
 
 import _c "core:c"
 import "core:fmt"
@@ -104,7 +104,10 @@ ERROR_CAIRO_INIT :: (1 << 30)
 ERROR_SURFACE_INIT :: (error(1) << 31)
 ERROR_OUTPUT_INIT :: (error(1) << 32)
 ERROR_CURSOR_THEME :: (error(1) << 33)
-NUM_ERRORS :: 34
+ERROR_FRACTIONAL_SCALE_INIT :: (error(1) << 34)
+ERROR_VIEWPORT_INIT :: (error(1) << 35)
+ERROR_PROTOCOL_VERSION :: (error(1) << 36)
+NUM_ERRORS :: 37
 
 shared_buffer :: struct {
     buffer: rawptr,
@@ -128,44 +131,32 @@ seat :: struct {
 }
 
 context_t :: struct {
-    display:            rawptr,
-    shm:                rawptr,
-    compositor:         rawptr,
-    layer_shell:        rawptr,
-    output_manager:     rawptr,
-    screencopy_manager: rawptr,
-    cursor_engine:      ^cursor_engine,
-    seats:              [^]^seat,
-    num_seats:          _c.size_t,
-    outputs:            [^]^output,
-    num_outputs:        _c.size_t,
-    events:             [^]event,
-    num_events:         _c.size_t,
-    cap_events:         _c.size_t,
-    event_index:        _c.size_t,
-    running:            b32,
-    render_state:       render_state,
-    backend:            ^backend,
-    config:             context_config,
-    app:                app,
-    frame_timer:        frame_timer,
+    display:                  rawptr,
+    shm:                      rawptr,
+    compositor:               rawptr,
+    layer_shell:              rawptr,
+    output_manager:           rawptr,
+    screencopy_manager:       rawptr,
+    fractional_scale_manager: rawptr,
+    viewporter:               rawptr,
+    cursor_engine:            ^cursor_engine,
+    seats:                    [^]^seat,
+    num_seats:                _c.size_t,
+    outputs:                  [^]^output,
+    num_outputs:              _c.size_t,
+    events:                   [^]event,
+    num_events:               _c.size_t,
+    cap_events:               _c.size_t,
+    event_index:              _c.size_t,
+    running:                  b32,
+    render_state:             render_state,
+    backend:                  ^backend,
+    config:                   context_config,
+    app:                      app,
+    frame_timer:              frame_timer,
 }
 
-cursor :: struct {
-    seat:                 ^seat,
-    cursor:               rawptr,
-    surface:              rawptr,
-    current_cursor_image: rawptr,
-    current_image_index:  _c.uint,
-    current_time:         _c.double,
-}
-
-cursor_engine :: struct {
-    manager:     rawptr,
-    theme:       rawptr,
-    cursors:     [^]cursor,
-    num_cursors: _c.size_t,
-}
+cursor_engine :: rawptr
 
 rect :: struct {
     x: i32,
@@ -175,28 +166,30 @@ rect :: struct {
 }
 
 output :: struct {
-    output:       rawptr,
-    xdg_output:   rawptr,
-    sfc:          [^]^layer_surface,
-    num_sfc:      _c.size_t,
-    geo:          rect,
-    name:         cstring,
-    scale:        i32,
-    refresh_rate: i32,
+    output:     rawptr,
+    xdg_output: rawptr,
+    sfc:        [^]^layer_surface,
+    num_sfc:    _c.size_t,
+    geo:        rect,
+    name:       cstring,
 }
 
 layer_surface :: struct {
-    surface:          rawptr,
-    layer_surface:    rawptr,
-    backend_data:     rawptr,
-    w:                u32,
-    h:                u32,
-    callback_data:    rawptr,
-    not_ready:        _c.int,
-    dirty:            _c.int,
-    configured:       _c.int,
-    frame_start_time: _c.double,
-    frame_delta_time: _c.double,
+    surface:                rawptr,
+    layer_surface:          rawptr,
+    fractional_scale:       rawptr,
+    viewport:               rawptr,
+    backend_data:           rawptr,
+    w:                      u32,
+    h:                      u32,
+    preferred_buffer_scale: i32,
+    callback_data:          rawptr,
+    not_ready:              _c.int,
+    dirty:                  _c.int,
+    configured:             _c.int,
+    frame_start_time:       _c.double,
+    frame_delta_time:       _c.double,
+    scale:                  _c.double,
 }
 
 focus :: struct {
@@ -309,7 +302,7 @@ context_config :: struct {
 }
 
 @(default_calling_convention = "c")
-foreign samurai_render {
+foreign samure {
     @(link_name = "samure_create_shared_buffer")
     create_shared_buffer :: proc(shm: rawptr, format: u32, width: i32, height: i32) -> (^shared_buffer, error) ---
 
@@ -318,27 +311,6 @@ foreign samurai_render {
 
     @(link_name = "samure_shared_buffer_copy")
     shared_buffer_copy :: proc(dst: ^shared_buffer, src: ^shared_buffer) -> u64 ---
-
-    @(link_name = "samure_init_cursor")
-    init_cursor :: proc(seat: ^seat, theme: rawptr, compositor: rawptr) -> cursor ---
-
-    @(link_name = "samure_destroy_cursor")
-    destroy_cursor :: proc(cursor: cursor) ---
-
-    @(link_name = "samure_cursor_set_shape")
-    cursor_set_shape :: proc(engine: ^cursor_engine, cursor: ^cursor, theme: rawptr, shape: u32) ---
-
-    @(link_name = "samure_create_cursor_engine")
-    create_cursor_engine :: proc(ctx: ^context_t, manager: rawptr) -> (^cursor_engine, error) ---
-
-    @(link_name = "samure_destroy_cursor_engine")
-    destroy_cursor_engine :: proc(engine: ^cursor_engine) ---
-
-    @(link_name = "samure_cursor_engine_set_shape")
-    cursor_engine_set_shape :: proc(engine: ^cursor_engine, seat: ^seat, shape: u32) ---
-
-    @(link_name = "samure_cursor_engine_pointer_enter")
-    cursor_engine_pointer_enter :: proc(engine: ^cursor_engine, seat: ^seat) ---
 
     @(link_name = "samure_cursor_engine_update")
     cursor_engine_update :: proc(engine: ^cursor_engine, delta_time: _c.double) ---
@@ -358,12 +330,6 @@ foreign samurai_render {
     @(link_name = "samure_triangle_in_output")
     triangle_in_output :: proc(output_geo: rect, tri_x1: i32, tri_y1: i32, tri_x2: i32, tri_y2: i32, tri_x3: i32, tri_y3: i32) -> b32 ---
 
-    @(link_name = "samure_create_seat")
-    create_seat :: proc(ctx: ^context_t, wl_seat: rawptr) -> (^seat, error) ---
-
-    @(link_name = "samure_destroy_seat")
-    destroy_seat :: proc(seat: ^seat) ---
-
     @(link_name = "samure_create_layer_surface")
     create_layer_surface :: proc(ctx: ^context_t, output: ^output, layer: u32, anchor: u32, keyboard_interaction: b32, pointer_interaction: b32, backend_association: b32) -> (^layer_surface, error) ---
 
@@ -376,11 +342,8 @@ foreign samurai_render {
     @(link_name = "samure_layer_surface_request_frame")
     layer_surface_request_frame :: proc(ctx: ^context_t, sfc: ^layer_surface, geo: rect) ---
 
-    @(link_name = "samure_create_output")
-    create_output :: proc(ctx: ^context_t, wl_output: rawptr) -> (^output, error) ---
-
-    @(link_name = "samure_destroy_output")
-    destroy_output :: proc(ctx: ^context_t, output: ^output) ---
+    @(link_name = "samure_create_shared_buffer_for_layer_surface")
+    create_shared_buffer_for_layer_surface :: proc(ctx: ^context_t, sfc: ^layer_surface, old_buffer: ^shared_buffer) -> (^shared_buffer, error) ---
 
     @(link_name = "samure_output_set_pointer_interaction")
     output_set_pointer_interaction :: proc(ctx: ^context_t, output: ^output, enable: b32) ---
@@ -397,17 +360,11 @@ foreign samurai_render {
     @(link_name = "samure_output_screenshot")
     output_screenshot :: proc(ctx: ^context_t, output: ^output, capture_cursor: b32) -> (^shared_buffer, error) ---
 
-    @(link_name = "samure_init_frame_timer")
-    init_frame_timer :: proc(max_fps: u32) -> frame_timer ---
-
     @(link_name = "samure_frame_timer_start_frame")
     frame_timer_start_frame :: proc(f: ^frame_timer) ---
 
     @(link_name = "samure_frame_timer_end_frame")
     frame_timer_end_frame :: proc(f: ^frame_timer) ---
-
-    @(link_name = "samure_get_time")
-    get_time :: proc() -> _c.double ---
 
     @(link_name = "samure_init_backend_cairo")
     init_backend_cairo :: proc(ctx: ^context_t) -> (^backend_cairo, error) ---
@@ -432,9 +389,6 @@ foreign samurai_render {
 
     @(link_name = "samure_get_cairo_surface")
     get_cairo_surface :: proc(layer_surface: ^layer_surface) -> ^cairo_surface ---
-
-    @(link_name = "_samure_cairo_surface_create_cairo")
-    _samure_cairo_surface_create_cairo :: proc(c: ^cairo_surface) -> u64 ---
 
     @(link_name = "samure_init_backend_raw")
     init_backend_raw :: proc(ctx: ^context_t) -> (^backend_raw, error) ---
@@ -617,6 +571,12 @@ strerror :: proc(error_code: error) -> string {
         return "output initialization failed"
     case ERROR_CURSOR_THEME:
         return "failed to load cursor theme"
+    case ERROR_FRACTIONAL_SCALE_INIT:
+        return "fractional scale initialization failed"
+    case ERROR_VIEWPORT_INIT:
+        return "viewport initialization failed"
+    case ERROR_PROTOCOL_VERSION:
+        return "required protocol version not matched"
     case:
         return "unknown error"
     }
